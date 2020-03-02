@@ -1,0 +1,4 @@
+notebook
+nbformat
+attackcti
+jinja2
