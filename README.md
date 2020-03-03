@@ -1,5 +1,5 @@
 # mitre-ads-notebook-templates
-Jupyter notebook templates for describing the [MITRE ATT&amp;CK techniques](https://attack.mitre.org/) using Palantir's [Alerting and Detection Strategy framework](https://github.com/palantir/alerting-detection-strategy-framework)
+Jupyter notebook templates for describing the [MITRE ATT&amp;CK techniques](https://attack.mitre.org/) using Palantir's [Alerting and Detection Strategy framework](https://github.com/palantir/alerting-detection-strategy-framework). It also correlates each technique with any relevant [Sigma rules](https://github.com/Neo23x0/sigma).
 
 ### Usage
 

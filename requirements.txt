@@ -2,3 +2,4 @@ notebook
 nbformat
 attackcti
 jinja2
+pyyaml
