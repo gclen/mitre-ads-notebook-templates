@@ -13,6 +13,20 @@ import yaml
 
 from attackcti import attack_client
 
+def create_notebook(notebook_filename, ads_template, tactic_display, technique_name, url, references, sigma_rules):
+    if notebook_filename.exists():
+            return None
+    else:
+        rendered = ads_template.render(tactic=tactic_display, technique=technique_name, 
+                                       technique_url=url, references=references, sigma_rules=sigma_rules)
+
+        nb = nbf.v4.new_notebook()
+        ads_cell = nbf.v4.new_markdown_cell(rendered)
+        nb['cells'] = [ads_cell]
+        logging.info(f'Creating notebook {notebook_filename}')
+        nbf.write(nb, str(notebook_filename))
+        return notebook_filename
+
 def generate_notebooks(techniques, ads_template, notebook_dir_name, mitre_sigma_mapping):
 
     notebook_dir = Path(notebook_dir_name)
@@ -25,8 +39,6 @@ def generate_notebooks(techniques, ads_template, notebook_dir_name, mitre_sigma_
 
             url = technique['url']
             
-            output_file_name = f'{technique_id}_{technique_name_normalized}.ipynb'
-
             references = technique['external_references']
             references = [ref for ref in references if ref['source_name'] not in ['mitre-attack', 'mitre-pre-attack']]
             
@@ -34,22 +46,21 @@ def generate_notebooks(techniques, ads_template, notebook_dir_name, mitre_sigma_
             sigma_rules = mitre_sigma_mapping.get(technique_id, [])
 
             out_dir = notebook_dir / tactic
-            output_file = out_dir/ output_file_name
-            
+        
             if not out_dir.exists():
                 out_dir.mkdir(parents=True)
             
-            if output_file.exists():
-                continue
-            else:
-                rendered = ads_template.render(tactic=tactic_display, technique=technique_name, 
-                                            technique_url=url, references=references, sigma_rules=sigma_rules)
-                
-                nb = nbf.v4.new_notebook()
-                ads_cell = nbf.v4.new_markdown_cell(rendered)
-                nb['cells'] = [ads_cell]
-                logging.info(f'Creating notebook {output_file}')
-                nbf.write(nb, str(output_file))
+            # Create a notebook for each MITRE technique
+            technique_file_name = f'{technique_id}_MITRE_{technique_name_normalized}.ipynb'
+            technique_file = out_dir/ technique_file_name
+            create_notebook(technique_file, ads_template, tactic_display, technique_name, url, references, sigma_rules) 
+            
+            if sigma_rules:
+                for rule in sigma_rules:
+                    sigma_normalized_name = rule['normalized_name']
+                    rule_file_name = f'{technique_id}_SIGMA_{sigma_normalized_name}.ipynb'
+                    out_file = out_dir / rule_file_name
+                    create_notebook(out_file, ads_template, tactic_display, technique_name, url, references, sigma_rules)
 
 def create_mitre_sigma_mapping(sigma_git_dir):
     sigma_dir = Path(sigma_git_dir)
@@ -72,6 +83,7 @@ def create_mitre_sigma_mapping(sigma_git_dir):
             # There may be multiple tags sections (though I haven't seen this)
             tags.extend(section.get('tags', []))
         
+        rule_name_normalized = re.sub(r'[\s/]+', '_', rule_name).replace("'", "").replace('-', '_')
         rule_path = str(Path(rule_file).relative_to(sigma_dir))
         rule_url = urljoin(sigma_base_url, rule_path)
         
@@ -80,7 +92,8 @@ def create_mitre_sigma_mapping(sigma_git_dir):
 
             if match:
                 attack_id = match.group(1).upper()
-                mitre_sigma_mapping[attack_id].append({'rule_name': rule_name, 'url': rule_url})
+                mitre_sigma_mapping[attack_id].append({'rule_name': rule_name, 'url': rule_url, 
+                                                       'normalized_name': rule_name_normalized})
     
     return mitre_sigma_mapping
 
